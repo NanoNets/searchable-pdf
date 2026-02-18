@@ -151,14 +151,10 @@ The project includes a Dockerfile and GitHub Actions workflow for deploying to *
    - Environment variables: `NANONETS_API_KEY` (required)
    - Health check path: `/health`
 
-3. **Add GitHub secrets**
+3. **GitHub Actions uses OIDC** (no AWS keys needed)
 
-   | Secret | Description |
-   |--------|-------------|
-   | `AWS_ACCESS_KEY_ID` | IAM user with ECR + App Runner permissions |
-   | `AWS_SECRET_ACCESS_KEY` | Corresponding secret |
-   | `ECR_REPOSITORY_NAME` | Repository name, e.g. `searchable-pdf` |
-   | `APP_RUNNER_SERVICE_ARN` | ARN of the App Runner service |
+   The workflow authenticates via OpenID Connect. The IAM role `github-actions-searchable-pdf` is already configured. Optionally add:
+   - `APP_RUNNER_SERVICE_ARN` – ARN of the App Runner service (enables auto-deploy on push)
 
 ### Deploy
 
