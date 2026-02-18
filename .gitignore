@@ -1,0 +1,36 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Generated outputs
+output*.pdf
+calibration_*.pdf
+test_insert*.pdf
+test_rm*.pdf
