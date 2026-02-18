@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+*.md
+__pycache__
+*.pyc
+.pytest_cache
+node_modules
+frontend/dist
+backend/.venv
+backend/app/test
+*.pdf

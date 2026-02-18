@@ -1,10 +1,11 @@
 import io
+import os
 from pathlib import Path
 
 import fitz
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.config import get_settings
 from app.docstrange import DocstrangeError, extract_with_bboxes
@@ -17,7 +18,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=["*"],  # Relaxed for deployment; restrict in production if needed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,16 +62,10 @@ def _validate_pdf(pdf_bytes: bytes) -> None:
         )
 
 
-@app.get("/health")
-async def health():
-    """Readiness check."""
-    settings = get_settings()
-    if not settings.nanonets_api_key:
-        raise HTTPException(status_code=503, detail="NANONETS_API_KEY not configured")
-    return {"status": "ok"}
+api_router = APIRouter()
 
 
-@app.post("/process")
+@api_router.post("/process")
 async def process_pdf(file: UploadFile = File(...)):
     """
     Upload a scanned PDF and receive a searchable PDF with embedded text layer.
@@ -130,3 +125,35 @@ async def process_pdf(file: UploadFile = File(...)):
             "Content-Disposition": f'attachment; filename="{output_filename}"',
         },
     )
+
+
+app.include_router(api_router, prefix="/api")
+
+
+@app.get("/health")
+async def health():
+    """Readiness check."""
+    settings = get_settings()
+    if not settings.nanonets_api_key:
+        raise HTTPException(status_code=503, detail="NANONETS_API_KEY not configured")
+    return {"status": "ok"}
+
+
+# Also expose /process for dev proxy (which strips /api prefix)
+app.add_api_route("/process", process_pdf, methods=["POST"])
+
+
+# Serve frontend static files when STATIC_DIR is set (Docker/production)
+_static_dir = os.environ.get("STATIC_DIR")
+if _static_dir and Path(_static_dir).exists():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/assets", StaticFiles(directory=Path(_static_dir) / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve index.html for SPA routes; static files for assets."""
+        path = Path(_static_dir) / full_path
+        if path.is_file():
+            return FileResponse(path)
+        return FileResponse(Path(_static_dir) / "index.html")

@@ -130,3 +130,45 @@ curl -X POST http://localhost:8000/process \
   -F "file=@scanned-document.pdf" \
   -o searchable-document.pdf
 ```
+
+## AWS Deployment (App Runner)
+
+The project includes a Dockerfile and GitHub Actions workflow for deploying to **AWS App Runner**.
+
+### One-time setup
+
+1. **Create ECR repository**
+
+   ```bash
+   aws ecr create-repository --repository-name searchable-pdf --region us-east-1
+   ```
+
+2. **Create App Runner service** (AWS Console or CLI)
+
+   - Source: Amazon ECR
+   - Image: select the `searchable-pdf` repository, tag `latest`
+   - Port: 8000
+   - Environment variables: `NANONETS_API_KEY` (required)
+   - Health check path: `/health`
+
+3. **Add GitHub secrets**
+
+   | Secret | Description |
+   |--------|-------------|
+   | `AWS_ACCESS_KEY_ID` | IAM user with ECR + App Runner permissions |
+   | `AWS_SECRET_ACCESS_KEY` | Corresponding secret |
+   | `ECR_REPOSITORY_NAME` | Repository name, e.g. `searchable-pdf` |
+   | `APP_RUNNER_SERVICE_ARN` | ARN of the App Runner service |
+
+### Deploy
+
+- **Automatic**: Push to `main` or `master`
+- **Manual**: Actions → "Deploy to AWS App Runner" → Run workflow
+
+### Local Docker test
+
+```bash
+docker build -t searchable-pdf .
+docker run -p 8000:8000 -e NANONETS_API_KEY=your_key searchable-pdf
+# Open http://localhost:8000
+```
