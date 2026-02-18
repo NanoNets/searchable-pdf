@@ -1,0 +1,37 @@
+{
+  "ServiceName": "searchable-pdf",
+  "SourceConfiguration": {
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "arn:aws:iam::906016811878:role/apprunner-ecr-access"
+    },
+    "AutoDeploymentsEnabled": false,
+    "ImageRepository": {
+      "ImageIdentifier": "906016811878.dkr.ecr.us-east-1.amazonaws.com/searchable-pdf:latest",
+      "ImageConfiguration": {
+        "Port": "8000",
+        "RuntimeEnvironmentSecrets": {
+          "NANONETS_API_KEY": "REPLACE_WITH_SECRET_ARN"
+        }
+      },
+      "ImageRepositoryType": "ECR"
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1024",
+    "Memory": "2048",
+    "InstanceRoleArn": "arn:aws:iam::906016811878:role/apprunner-searchable-pdf-instance"
+  },
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/health",
+    "Interval": 10,
+    "Timeout": 5,
+    "HealthyThreshold": 1,
+    "UnhealthyThreshold": 5
+  },
+  "NetworkConfiguration": {
+    "EgressConfiguration": {
+      "EgressType": "DEFAULT"
+    }
+  }
+}

@@ -1,19 +1,34 @@
 #!/bin/bash
 # Deploy Searchable PDF to AWS App Runner
-# Prerequisites: AWS CLI configured, Docker, NANONETS_API_KEY set
-# Usage: NANONETS_API_KEY=your_key ./deploy/deploy.sh
+#
+# Local/dev (env var):  NANONETS_API_KEY=your_key ./deploy/deploy.sh
+# Production (Secrets Manager): NANONETS_SECRET_ARN=arn:... ./deploy/deploy.sh --production
+#
 set -e
 
 REGION="${AWS_REGION:-us-east-1}"
 ECR_REPO="searchable-pdf"
 ECR_URI="906016811878.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}"
-APP_RUNNER_ECR_ACCESS_ARN="arn:aws:iam::906016811878:role/apprunner-ecr-access"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PRODUCTION=false
 
-if [ -z "$NANONETS_API_KEY" ]; then
-  echo "Error: NANONETS_API_KEY must be set."
-  echo "Usage: NANONETS_API_KEY=your_key $0"
-  exit 1
+for arg in "$@"; do
+  [ "$arg" = "--production" ] && PRODUCTION=true
+done
+
+if [ "$PRODUCTION" = true ]; then
+  if [ -z "$NANONETS_SECRET_ARN" ]; then
+    echo "Error: NANONETS_SECRET_ARN must be set for production."
+    echo "First run: NANONETS_API_KEY=your_key ./deploy/create-secret.sh"
+    echo "Then: NANONETS_SECRET_ARN=\$ARN ./deploy/deploy.sh --production"
+    exit 1
+  fi
+else
+  if [ -z "$NANONETS_API_KEY" ]; then
+    echo "Error: NANONETS_API_KEY must be set for local/dev."
+    echo "Usage: NANONETS_API_KEY=your_key $0"
+    exit 1
+  fi
 fi
 
 echo "=== Building Docker image ==="
@@ -35,11 +50,16 @@ if [ -n "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
   echo "Deployment started!"
 else
   echo "=== Creating new App Runner service ==="
-  # Create temp config with actual API key
   TMP_JSON=$(mktemp)
-  jq --arg key "$NANONETS_API_KEY" \
-    '.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables.NANONETS_API_KEY = $key' \
-    "$SCRIPT_DIR/apprunner-create.json" > "$TMP_JSON"
+  if [ "$PRODUCTION" = true ]; then
+    jq --arg arn "$NANONETS_SECRET_ARN" \
+      '.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentSecrets.NANONETS_API_KEY = $arn' \
+      "$SCRIPT_DIR/apprunner-create-production.json" > "$TMP_JSON"
+  else
+    jq --arg key "$NANONETS_API_KEY" \
+      '.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables.NANONETS_API_KEY = $key' \
+      "$SCRIPT_DIR/apprunner-create.json" > "$TMP_JSON"
+  fi
 
   aws apprunner create-service --cli-input-json "file://$TMP_JSON" --region $REGION
   rm -f "$TMP_JSON"

@@ -9,7 +9,7 @@
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:prats226/searchable-pdf:*"
+          "token.actions.githubusercontent.com:sub": "repo:NanoNets/searchable-pdf:*"
         },
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
