@@ -132,11 +132,9 @@ app.include_router(api_router, prefix="/api")
 
 @app.get("/health")
 async def health():
-    """Readiness check."""
+    """Health check for load balancers (e.g. App Runner). Always returns 200 when server is up."""
     settings = get_settings()
-    if not settings.nanonets_api_key:
-        raise HTTPException(status_code=503, detail="NANONETS_API_KEY not configured")
-    return {"status": "ok"}
+    return {"status": "ok", "ready": bool(settings.nanonets_api_key)}
 
 
 # Also expose /process for dev proxy (which strips /api prefix)
