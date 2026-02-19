@@ -135,31 +135,41 @@ curl -X POST http://localhost:8000/process \
 
 The project includes a Dockerfile and GitHub Actions workflow for deploying to **AWS App Runner**.
 
+### Local vs production
+
+| Environment | API key source |
+|-------------|----------------|
+| **Local**   | `NANONETS_API_KEY` env var (from `.env` or shell) |
+| **Production** | AWS Secrets Manager (never in config or code) |
+
 ### One-time setup
 
-1. **Create ECR repository**
+1. **ECR, IAM roles** – Already created for this account.
+
+2. **For production**: Store the API key in Secrets Manager:
 
    ```bash
-   aws ecr create-repository --repository-name searchable-pdf --region us-east-1
+   NANONETS_API_KEY=your_key ./deploy/create-secret.sh
+   # Saves the ARN – use it for production deploy
    ```
 
-2. **Create App Runner service** (AWS Console or CLI)
-
-   - Source: Amazon ECR
-   - Image: select the `searchable-pdf` repository, tag `latest`
-   - Port: 8000
-   - Environment variables: `NANONETS_API_KEY` (required)
-   - Health check path: `/health`
-
-3. **GitHub Actions uses OIDC** (no AWS keys needed)
-
-   The workflow authenticates via OpenID Connect. The IAM role `github-actions-searchable-pdf` is already configured. Optionally add:
-   - `APP_RUNNER_SERVICE_ARN` – ARN of the App Runner service (enables auto-deploy on push)
+3. **GitHub Actions** uses OIDC (no AWS keys). Optionally add `APP_RUNNER_SERVICE_ARN` secret for auto-deploy on push.
 
 ### Deploy
 
-- **Automatic**: Push to `main` or `master`
-- **Manual**: Actions → "Deploy to AWS App Runner" → Run workflow
+**Local/dev** (env var – for first-time service creation):
+
+```bash
+NANONETS_API_KEY=your_key ./deploy/deploy.sh
+```
+
+**Production** (Secrets Manager):
+
+```bash
+NANONETS_SECRET_ARN=arn:aws:secretsmanager:... ./deploy/deploy.sh --production
+```
+
+**Automatic**: Push to `main` triggers build and push to ECR (and deploy if `APP_RUNNER_SERVICE_ARN` is set).
 
 ### Local Docker test
 
