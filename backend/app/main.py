@@ -130,7 +130,7 @@ async def process_pdf(file: UploadFile = File(...)):
 app.include_router(api_router, prefix="/api")
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     """Health check for load balancers (e.g. App Runner). Always returns 200 when server is up."""
     settings = get_settings()
@@ -148,9 +148,9 @@ if _static_dir and Path(_static_dir).exists():
 
     app.mount("/assets", StaticFiles(directory=Path(_static_dir) / "assets"), name="assets")
 
-    @app.get("/{full_path:path}")
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     async def serve_spa(full_path: str):
-        """Serve index.html for SPA routes; static files for assets."""
+        """Serve index.html for SPA routes; static files for assets. Supports HEAD for load balancer probes."""
         path = Path(_static_dir) / full_path
         if path.is_file():
             return FileResponse(path)
