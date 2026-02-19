@@ -15,9 +15,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install uv (reliable install method)
+# Install uv
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -b /usr/local/bin \
+    && curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh \
     && apt-get remove -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Backend

@@ -1,14 +1,19 @@
 #!/bin/bash
-# Create App Runner service (production with Secrets Manager) - no Docker build
+# Create App Runner service (production) - no Docker build
 # Use after image is in ECR (e.g. from GitHub Actions)
 # Usage: NANONETS_SECRET_ARN=arn:... ./deploy/create-service-only.sh
+# Or: NANONETS_API_KEY=your_key ./deploy/create-service-only.sh  (fetches from Secrets Manager)
 set -e
 
 REGION="${AWS_REGION:-us-east-1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -z "$NANONETS_SECRET_ARN" ]; then
-  echo "Error: NANONETS_SECRET_ARN must be set."
+# Get API key: from Secrets Manager ARN or direct env
+if [ -n "$NANONETS_SECRET_ARN" ]; then
+  echo "Fetching API key from Secrets Manager..."
+  NANONETS_API_KEY=$(aws secretsmanager get-secret-value --secret-id "$NANONETS_SECRET_ARN" --region $REGION --query SecretString --output text)
+elif [ -z "$NANONETS_API_KEY" ]; then
+  echo "Error: NANONETS_SECRET_ARN or NANONETS_API_KEY must be set."
   exit 1
 fi
 
@@ -20,9 +25,9 @@ if [ -n "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
 else
   echo "Creating App Runner service..."
   TMP_JSON=$(mktemp)
-  jq --arg arn "$NANONETS_SECRET_ARN" \
-    '.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentSecrets.NANONETS_API_KEY = $arn' \
-    "$SCRIPT_DIR/apprunner-create-production.json" > "$TMP_JSON"
+  jq --arg key "$NANONETS_API_KEY" \
+    '.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables.NANONETS_API_KEY = $key' \
+    "$SCRIPT_DIR/apprunner-create.json" > "$TMP_JSON"
   aws apprunner create-service --cli-input-json "file://$TMP_JSON" --region $REGION
   rm -f "$TMP_JSON"
   echo "Service created!"
